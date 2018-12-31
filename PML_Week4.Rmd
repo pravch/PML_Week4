@@ -1,0 +1,89 @@
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+library(gbm)
+```
+
+##Reading the data for test data and training data
+```{r}
+modeldata<-read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"))
+testdata<-read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"))
+```
+
+##Data Cleansing - by removing all columns with all NA values
+```{r}
+p<-(colSums(is.na(modeldata))==0)
+modeldata <- modeldata[, p]
+testdata<-testdata[, p]
+```
+
+##Removing Variables with near Zero variance and removing the non-quantifiable variables, i.e columns 1:5
+```{r}
+nzv <- nearZeroVar(modeldata)
+modeldata <- modeldata[,-nzv]
+testdata <- testdata[,-nzv]
+modeldata<-modeldata[,-(1:5)]
+testdata<-testdata[,-(1:5)]
+```
+
+##Splitting the training data into Training and cross validation data sets in 60:40 ratio for modeling and testing
+```{r}
+inTrain  <- createDataPartition(modeldata$classe, p=0.6, list=FALSE)
+trainingdataset<-modeldata[inTrain,]
+testdataset<-modeldata[-inTrain,]
+dim(trainingdataset)
+dim(testdataset)
+```
+##Building the models
+##1. Using Decision Tree Model
+```{r}
+dtreefit <- train(classe ~ ., data = trainingdataset, method="rpart")
+rpart.plot(dtreefit$finalModel, roundint=FALSE)
+```
+
+###Predicting with Decision Tree Model
+```{r}
+dtreeprediction <- predict(dtreefit, testdataset)
+confusionMatrix(dtreeprediction, testdataset$classe)
+```
+##As observed above, the accuracy percentage using Decision Tree is 52.35% which is not great.
+
+##2. Using the Random Forest Model
+```{r}
+rforestfit <- train(classe ~ ., data = trainingdataset, method = "rf", ntree = 100)
+```
+###Predicting with Random Forest Model
+```{r}
+rforestprediction <- predict(rforestfit, testdataset)
+confusionMatrix(rforestprediction, testdataset$classe)
+```
+##As observed above, the accuracy percentage using Random Forest method is 99.71% and is really good for prediction
+
+##3. Using the Gradient Boosting Model
+```{r}
+gboostfit<-train(classe ~ ., data = trainingdataset, method = "gbm", verbose = FALSE)
+```
+
+###Predicting with Gradient Boosting Model
+```{r}
+gboostprediction <- predict(gboostfit, testdataset)
+confusionMatrix(gboostprediction, testdataset$classe)
+```
+##As observed above, the accuracy percentage using Gradient Boosting model is 98.46% which is also good
+
+#Conclusion
+## On Comparing all the 3 models, Random Forest model turns out to be the best fit for most accurate prediction with an accuracy percentage of 99.71%, with Gradient Boosting a near second. Hence, we will be using Random Forest for Prediction
+
+## Predicting on the test data sets
+```{r}
+testpredict<-predict(rforestfit, testdata)
+testpredict
+```
+
+
